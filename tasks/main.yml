@@ -34,6 +34,9 @@
     remaining_days: 60
   register: challenge
 
+- debug:
+    var: challenge
+
 
 - name: cloudflare_dns | create DNS challenge record
   cloudflare_dns:
@@ -46,6 +49,10 @@
     record: "{{ challenge['challenge_data'][common_name]['dns-01']['resource'] }}"
     value: "{{ challenge['challenge_data'][common_name]['dns-01']['resource_value'] }}"
 
+
+- name: Wait for the required TXT record to register into cloudflare database
+  wait_for:
+    timeout: 10  # increase if needed :)
 
 - name: LetsEncrypt | retrieve cert
   acme_certificate:
@@ -62,8 +69,21 @@
     data: "{{ challenge }}"
   register: cert_retrieval
 
-- name: remove the account key
+- name: cloudflare_dns | remove DNS challenge record
+  cloudflare_dns:
+    account_api_token: "{{ cloudflare_dns_api_key }}"
+    account_email: niemela.elmeri@gmail.com
+    state: absent
+    zone: "{{ zone }}"
+    type: TXT
+    record: "{{ challenge['challenge_data'][common_name]['dns-01']['resource'] }}"
+
+- name: Remove not needed files
   file:
-    path: "{{ ssl_cert_dir }}{{ account_key }}"
+    path: "{{ ssl_cert_dir }}/{{ item }}"
     state: absent
   when: cert_retrieval is changed
+  with_items:
+    - "{{ account_key }}"
+    - "{{ certname }}"
+    - "{{ csrname }}"
