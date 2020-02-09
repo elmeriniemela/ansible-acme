@@ -1,5 +1,5 @@
 ---
-- name: create temp dir
+- name: create cert dir
   file:
     path: "{{ ssl_cert_dir }}"
     state: directory
